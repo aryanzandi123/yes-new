@@ -21,7 +21,7 @@ from pipeline_config_gpt5 import PIPELINE_STEPS
 from pipeline_types import StepConfig
 from visualizer import create_visualization, open_visualization
 
-MAX_ALLOWED_THINKING_BUDGET = 32768
+MAX_ALLOWED_THINKING_BUDGET = 65536
 MIN_ALLOWED_THINKING_BUDGET = 128
 
 _openai_client: Optional[OpenAI] = None

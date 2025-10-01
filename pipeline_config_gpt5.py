@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from pipeline_types import StepConfig
 
-MAX_THINKING_TOKENS = 32768
+MAX_THINKING_TOKENS = 65536
 MAX_OUTPUT_TOKENS = 65536
 DYNAMIC_SEARCH_THRESHOLD = 0.0
 
