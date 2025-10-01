@@ -1,0 +1,1292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Protein Interaction Network - ATXN3</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+            background: #f8f9fa;
+            min-height: 100vh;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .container {
+            position: relative;
+            width: 100%;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .header {
+            background: white;
+            padding: 15px 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.08);
+            z-index: 100;
+            border-bottom: 1px solid #e1e4e8;
+        }
+
+        .title {
+            font-size: 24px;
+            font-weight: 600;
+            color: #1a202c;
+            text-align: center;
+            margin-bottom: 5px;
+            letter-spacing: -0.5px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #6b7280;
+            font-size: 13px;
+            font-weight: 400;
+        }
+
+        #network {
+            flex: 1;
+            position: relative;
+            background: white;
+            overflow: hidden;
+        }
+
+        .controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            padding: 10px;
+            display: flex;
+            gap: 8px;
+            z-index: 50;
+            border: 1px solid #e1e4e8;
+        }
+
+        .control-btn {
+            width: 32px;
+            height: 32px;
+            border: 1px solid #d1d5db;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: #4b5563;
+            transition: all 0.2s ease;
+        }
+
+        .control-btn:hover {
+            background: #f3f4f6;
+            border-color: #9ca3af;
+        }
+
+        .node {
+            cursor: move;
+            transition: all 0.2s ease;
+        }
+
+        .node:hover {
+            filter: brightness(1.1);
+        }
+
+        .main-node {
+            fill: #2d3748;
+            stroke: #1a202c;
+            stroke-width: 2.5;
+        }
+
+        .interactor-node {
+            fill: #4a5568;
+            stroke: #2d3748;
+            stroke-width: 2;
+        }
+
+        .function-node {
+            fill: #ffffff;
+            stroke: #6b7280;
+            stroke-width: 1.5;
+            cursor: pointer;
+        }
+
+        .function-node:hover {
+            fill: #f0f4ff;
+            stroke: #4f46e5;
+            stroke-width: 2;
+        }
+
+        .function-node-query {
+            stroke-dasharray: none;
+            stroke-width: 2;
+        }
+
+        .function-node-interactor {
+            stroke-dasharray: 5,3;
+            stroke-width: 1.5;
+        }
+
+        .function-owner-badge {
+            fill: #4f46e5;
+            rx: 4;
+            ry: 4;
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+        }
+
+        .function-owner-text {
+            fill: white;
+            font-size: 9px;
+            font-weight: 600;
+            text-anchor: middle;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+
+        .cellular-process-badge {
+            fill: #10b981;
+            rx: 3;
+            ry: 3;
+        }
+
+        .cellular-process-text {
+            fill: white;
+            font-size: 8px;
+            font-weight: 600;
+            text-anchor: middle;
+        }
+
+        .link {
+            fill: none;
+            stroke-width: 2;
+            opacity: 0.6;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .link:hover {
+            stroke-width: 3;
+            opacity: 1;
+        }
+
+        .link-activate {
+            stroke: #059669;
+        }
+
+        .link-inhibit {
+            stroke: #dc2626;
+        }
+
+        .link-binding {
+            stroke: #7c3aed;
+        }
+
+        .function-link {
+            stroke-width: 3;
+            opacity: 0.8;
+        }
+
+        .node-label {
+            font-size: 12px;
+            font-weight: 600;
+            fill: white;
+            text-anchor: middle;
+            pointer-events: none;
+            font-family: 'Helvetica Neue', Arial, sans-serif;
+        }
+
+        .function-label {
+            font-size: 11px;
+            font-weight: 500;
+            fill: #374151;
+            text-anchor: middle;
+            pointer-events: none;
+            cursor: pointer;
+        }
+
+        .confidence-badge {
+            font-size: 16px;
+            font-weight: 700;
+            text-anchor: middle;
+            pointer-events: none;
+        }
+
+        .confidence-high { fill: #059669; }
+        .confidence-medium { fill: #f59e0b; }
+        .confidence-low { fill: #dc2626; }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            max-width: 900px;
+            max-height: 85vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 25px -5px rgba(0,0,0,0.2);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+
+        .modal-title {
+            font-size: 20px;
+            font-weight: 600;
+            color: #1f2937;
+        }
+
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #6b7280;
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+        }
+
+        .close-btn:hover {
+            background: #f3f4f6;
+            color: #1f2937;
+        }
+
+        .info-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .info-row {
+            border-bottom: 1px solid #f3f4f6;
+        }
+
+        .info-row:last-child {
+            border-bottom: none;
+        }
+
+        .info-label {
+            font-weight: 600;
+            color: #6b7280;
+            padding: 10px 0;
+            vertical-align: top;
+            width: 25%;
+            text-transform: uppercase;
+            font-size: 11px;
+            letter-spacing: 0.5px;
+        }
+
+        .info-value {
+            padding: 10px 0 10px 16px;
+            color: #1f2937;
+            line-height: 1.6;
+            font-size: 14px;
+        }
+
+        .cascade-arrow {
+            color: #10b981;
+            font-weight: bold;
+            margin: 0 4px;
+        }
+
+        .confidence-meter {
+            width: 180px;
+            height: 6px;
+            background: #e5e7eb;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 4px;
+            display: inline-block;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            border-radius: 3px;
+            transition: width 0.5s ease;
+        }
+
+        .confidence-fill.high { background: #059669; }
+        .confidence-fill.medium { background: #f59e0b; }
+        .confidence-fill.low { background: #dc2626; }
+
+        .evidence-item {
+            background: #f9fafb;
+            padding: 10px;
+            border-radius: 6px;
+            margin: 6px 0;
+            border-left: 3px solid #4f46e5;
+            font-size: 13px;
+        }
+
+        .evidence-item strong {
+            color: #4b5563;
+        }
+
+        .pmid-link {
+            color: #4f46e5;
+            text-decoration: none;
+            font-weight: 600;
+        }
+
+        .pmid-link:hover {
+            text-decoration: underline;
+        }
+
+        .specific-effect {
+            background: #f0f9ff;
+            padding: 8px 12px;
+            margin: 6px 0;
+            border-radius: 6px;
+            border-left: 3px solid #0891b2;
+            font-size: 13px;
+        }
+
+        .cellular-theme {
+            background: #ecfdf5;
+            padding: 12px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border: 1px solid #10b981;
+        }
+
+        .cellular-theme-title {
+            font-weight: 600;
+            color: #059669;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            font-size: 12px;
+        }
+        
+        .biological-cascade {
+            background: #fef3c7;
+            padding: 12px;
+            border-radius: 8px;
+            margin: 10px 0;
+            border: 1px solid #fbbf24;
+            font-size: 13px;
+            line-height: 1.8;
+        }
+
+        .legend {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            background: white;
+            padding: 12px 16px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border: 1px solid #e1e4e8;
+        }
+
+        .legend-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #374151;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            margin: 4px 0;
+            font-size: 12px;
+            color: #6b7280;
+        }
+
+        .legend-arrow {
+            width: 30px;
+            height: 20px;
+            margin-right: 8px;
+            display: flex;
+            align-items: center;
+        }
+
+        .info-panel {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: white;
+            padding: 12px 16px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            border: 1px solid #e1e4e8;
+            font-size: 12px;
+            color: #6b7280;
+        }
+
+        .info-panel strong {
+            color: #374151;
+        }
+        
+        .multi-function-indicator {
+            fill: #fbbf24;
+            stroke: #f59e0b;
+            stroke-width: 1;
+            cursor: pointer;
+        }
+
+        .multi-function-text {
+            fill: #92400e;
+            font-size: 10px;
+            font-weight: 700;
+            text-anchor: middle;
+            pointer-events: none;
+        }
+
+        .bidirectional-arrow-marker {
+            fill: #9ca3af;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1 class="title" id="networkTitle">ATXN3 Protein Interaction Network</h1>
+            <p class="subtitle">Click Functions & Arrows for Details • Shows Biological Cascades Not Just Mechanisms</p>
+        </div>
+        
+        <div id="network">
+            <div class="controls">
+                <button class="control-btn" onclick="zoomIn()" title="Zoom In">+</button>
+                <button class="control-btn" onclick="zoomOut()" title="Zoom Out">−</button>
+                <button class="control-btn" onclick="resetView()" title="Reset View">⟲</button>
+            </div>
+            
+            <div class="info-panel">
+                <strong>TIPS:</strong> Function boxes show biological processes • Click for cascading consequences
+            </div>
+            
+            <svg id="svg"></svg>
+        </div>
+
+        <div class="legend">
+            <div class="legend-title">INTERACTION TYPES</div>
+            <div class="legend-item">
+                <div class="legend-arrow">
+                    <svg width="30" height="20">
+                        <line x1="0" y1="10" x2="20" y2="10" stroke="#059669" stroke-width="2"/>
+                        <polygon points="20,10 26,10 23,7 23,13" fill="#059669"/>
+                    </svg>
+                </div>
+                Activates
+            </div>
+            <div class="legend-item">
+                <div class="legend-arrow">
+                    <svg width="30" height="20">
+                        <line x1="0" y1="10" x2="20" y2="10" stroke="#dc2626" stroke-width="2"/>
+                        <line x1="23" y1="6" x2="23" y2="14" stroke="#dc2626" stroke-width="3"/>
+                    </svg>
+                </div>
+                Inhibits
+            </div>
+            <div class="legend-item">
+                <div class="legend-arrow">
+                    <svg width="30" height="20">
+                        <line x1="0" y1="8" x2="26" y2="8" stroke="#7c3aed" stroke-width="2"/>
+                        <line x1="0" y1="12" x2="26" y2="12" stroke="#7c3aed" stroke-width="2"/>
+                    </svg>
+                </div>
+                Binding
+            </div>
+            <div class="legend-title" style="margin-top: 12px;">FUNCTION BOXES</div>
+            <div class="legend-item">
+                <svg width="20" height="12" style="margin-right: 8px;">
+                    <rect x="0" y="2" width="20" height="8" fill="white" stroke="#6b7280" stroke-width="2"/>
+                </svg>
+                Biological Functions
+            </div>
+            <div class="legend-item">
+                <svg width="20" height="12" style="margin-right: 8px;">
+                    <rect x="0" y="2" width="20" height="8" fill="#f0f4ff" stroke="#4f46e5" stroke-width="2"/>
+                </svg>
+                Click for Cascading Effects
+            </div>
+        </div>
+    </div>
+
+    <div id="modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 class="modal-title" id="modalTitle">Interaction Details</h2>
+                <button class="close-btn" onclick="closeModal()">&times;</button>
+            </div>
+            <div id="modalBody"></div>
+        </div>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+    <script>
+        // Embedded data
+        const data = {"main": "ATXN3", "interactors": [{"primary": "RAD23B", "direction": "bidirectional", "arrow": "binds", "intent": "binding", "pmids": ["10915768"], "confidence": 0.9, "evidence": [{"pmid": "10915768", "doi": "10.1093/hmg/9.12.1795", "paper_title": "Ataxin-3, the MJD1 gene product, interacts with the two human homologs of yeast DNA repair protein RAD23, HHR23A and HHR23B", "authors": "Wang G, Sawai N, Kotliarova S, Kanazawa I, Nukina N.", "journal": "Human Molecular Genetics", "year": 2000, "assay": "yeast two-hybrid, GST pull-down", "species": "human", "relevant_quote": "We demonstrate that ataxin-3 interacts with both HHR23A and HHR23B in the yeast two-hybrid system. The in vitro binding of ataxin-3 to HHR23A and HHR23B was confirmed by glutathione S-transferase pull-down experiments."}], "support_summary": "ATXN3 directly binds to RAD23B, a proteasomal shuttle protein, suggesting a role in protein degradation pathways.", "functions": [{"function": "Protein Trafficking", "arrow": "activates", "cellular_process": "Binding to RAD23B, a proteasomal shuttle protein.", "biological_consequence": "Binds polyubiquitinated substrates and the 26S proteasome \u2192 shuttles substrates to the proteasome for degradation.", "specific_effects": ["Modulates proteasomal degradation"], "pmids": ["17317799"], "confidence": 0.7, "note": "The interaction with Rad23 links ATXN3 to the ubiquitin-proteasome pathway, suggesting a role in mediating the degradation of ubiquitinated proteins.", "evidence": [{"pmid": "17317799", "doi": "10.1074/jbc.M609298200", "paper_title": "Ataxin-3, a gene product responsible for Machado-Joseph disease, is a peripheral protein of the endoplasmic reticulum", "authors": "Doss-Pepe EW, Stenroos ES, Johnson WG, Madura K.", "journal": "The Journal of Biological Chemistry", "year": 2007, "assay": "co-immunoprecipitation", "species": "human", "relevant_quote": "...ataxin-3 is a DUB that associates with Rad23 and VCP/p97, two proteins involved in ERAD."}]}, {"function": "Stress Granule Assembly", "arrow": "activates", "cellular_process": "Incorporation into stress granules upon cellular stress.", "biological_consequence": "Heterotypic interaction with RAD23B inhibits the maturation of ATXN3 phase-separated droplets \u2192 incorporation into liquid-like stress granules under arsenite stress.", "specific_effects": ["Incorporated into liquid-like stress granules under arsenite stress"], "pmids": ["34068493"], "confidence": 0.6, "note": "Heterotypic interactions with Rad23B inhibit the maturation of Ataxin-3 phase-separated droplets, suggesting a role in regulating aggregation dynamics during stress.", "evidence": [{"pmid": "34068493", "doi": "10.1038/s41467-021-23511-z", "paper_title": "Heterotypic interactions between ataxin-3 and Rad23 inhibit maturation of ataxin-3 phase-separated droplets", "authors": "Gu J, Xia Y, Zhang Y, Xu H, Wu L, Liu H, Chen Q.", "journal": "Nature Communications", "year": 2021, "assay": "in vitro phase separation assay", "species": "human", "relevant_quote": "Here, we report that ataxin-3 undergoes phase separation in vitro... Importantly, we find that heterotypic interactions with Rad23B inhibit the maturation of ataxin-3 phase-separated droplets and promote the incorporation of ataxin-3 into liquid-like stress granules under arsenite stress."}]}]}, {"primary": "BECN1", "direction": "main_to_primary", "arrow": "binds", "intent": "deubiquitination", "pmids": ["28445460"], "confidence": 0.85, "evidence": [{"pmid": "28445460", "doi": "10.1038/nature22071", "paper_title": "Polyglutamine tracts regulate beclin 1-dependent autophagy", "authors": "Ashkenazi A, Bento CF, Ricketts T, Vicinanza M, Siddiqi F, Pavel M, Squitieri F, Hardenberg MC, Imarisio S, Menzies FM, Rubinsztein DC.", "journal": "Nature", "year": 2017, "assay": "co-immunoprecipitation, in vitro binding assay", "species": "human, mouse", "relevant_quote": "Here we show that the polyQ domain enables wild-type ataxin 3 to interact with beclin 1, a key initiator of autophagy. This interaction allows the deubiquitinase activity of ataxin 3 to protect beclin 1 from proteasome-mediated degradation and thereby enables autophagy."}], "support_summary": "ATXN3 interacts with BECN1 via its polyQ domain and deubiquitinates it, leading to BECN1 stabilization and promotion of autophagy.", "functions": [{"function": "Autophagy", "arrow": "activates", "cellular_process": "Deubiquitination of BECN1.", "biological_consequence": "Stabilization of BECN1 \u2192 promotes formation of the PI3K-III complex (BECN1, VPS34, VPS15, ATG14) \u2192 nucleation of phagophores \u2192 autophagosome formation.", "specific_effects": ["Protects BECN1 from degradation"], "pmids": ["28445460"], "confidence": 0.95, "evidence": [{"pmid": "28445460", "doi": "10.1038/nature22071", "paper_title": "Polyglutamine tracts regulate beclin 1-dependent autophagy", "authors": "Ashkenazi A, Bento CF, Ricketts T, Vicinanza M, Siddiqi F, Pavel M, Squitieri F, Hardenberg MC, Imarisio S, Menzies FM, Rubinsztein DC.", "journal": "Nature", "year": 2017, "assay": "co-immunoprecipitation, in vitro binding assay", "species": "human, mouse", "relevant_quote": "Here we show that the polyQ domain enables wild-type ataxin 3 to interact with beclin 1, a key initiator of autophagy. This interaction allows the deubiquitinase activity of ataxin 3 to protect beclin 1 from proteasome-mediated degradation and thereby enables autophagy."}]}]}, {"primary": "STUB1", "direction": "bidirectional", "arrow": "binds", "intent": "ubiquitination", "pmids": ["31614041"], "confidence": 0.8, "evidence": [{"pmid": "31614041", "doi": "10.3389/fnins.2019.01057", "paper_title": "Carboxyl Terminus of Hsp70-Interacting Protein Is Increased in Serum and Cerebrospinal Fluid of Patients With Spinocerebellar Ataxia Type 3", "authors": "Li J, Chen Z, Li Y, Tang Z, Liu Z, Chen X, Wang J, Peng Y, Li X, Ashizawa T, Wang J.", "journal": "Frontiers in Neuroscience", "year": 2019, "assay": "ELISA, Western Blot", "species": "human", "relevant_quote": "CHIP interacts directly with ataxin-3, a protein encoded by the ATXN3 gene, which is mainly expressed in the cytoplasm of neurons. Functioning as a deubiquitinase, ataxin-3 regulates the length of the ubiquitin chain of CHIP substrates, as well as the activity of CHIP complexes."}], "support_summary": "ATXN3 and the E3 ligase STUB1 (CHIP) interact directly. ATXN3 deubiquitinates CHIP substrates, regulating protein degradation.", "multiple_mechanisms": true, "functions": [{"function": "Regulation of Protein Degradation", "arrow": "inhibits", "cellular_process": "Restriction of ubiquitin chain length on STUB1/CHIP substrates.", "biological_consequence": "Prevents extension of polyubiquitin chains on chaperone-bound substrates targeted by STUB1/CHIP \u2192 modulates substrate fate, balancing between degradation and refolding.", "specific_effects": ["Limits polyubiquitin chain extension"], "pmids": ["23152813"], "doi": "10.1074/jbc.M112.400547", "confidence": 0.85, "mechanism_id": "0", "note": "ATXN3 is recruited to monoubiquitinated STUB1 and limits the length of ubiquitin chains attached to its substrates.", "evidence": [{"pmid": "23152813", "doi": "10.1074/jbc.M112.400547", "paper_title": "Ataxin-3 is a sensor of chaperone-assisted monoubiquitylation", "authors": "Scaglione KM, Zavodszky E, Todi SV, Patury S, Xu P, Luan B, Southworth DR, Paulson HL.", "journal": "The Journal of Biological Chemistry", "year": 2013, "assay": "in vitro ubiquitination assay", "species": "human", "relevant_quote": "Here, we show that ataxin-3 is recruited to the E3 ubiquitin ligase CHIP after CHIP monoubiquitylates itself. Ataxin-3 then potently restricts the length of ubiquitin chains attached to a chaperone-bound substrate."}]}, {"function": "Protein Quality Control", "arrow": "activates", "cellular_process": "Regulation of the CHIP ubiquitination cycle.", "biological_consequence": "Edits ubiquitin chains on STUB1/CHIP substrates \u2192 prevents excessive ubiquitination \u2192 ensures proper substrate handoff to the proteasome for degradation of misfolded proteins.", "specific_effects": ["Limits ubiquitin chain length on CHIP substrates", "Deubiquitinates CHIP to terminate ubiquitination"], "pmids": ["23152813"], "doi": "10.1074/jbc.M112.400547", "confidence": 0.85, "note": "The opposing activities of the initiator E2 (Ube2w) and ATXN3 coordinately regulate the CHIP E3 ligase in ubiquitin-dependent protein quality control.", "evidence": [{"pmid": "23152813", "doi": "10.1074/jbc.M112.400547", "paper_title": "Ataxin-3 is a sensor of chaperone-assisted monoubiquitylation", "authors": "Scaglione KM, Zavodszky E, Todi SV, Patury S, Xu P, Luan B, Southworth DR, Paulson HL.", "journal": "The Journal of Biological Chemistry", "year": 2013, "assay": "in vitro ubiquitination assay", "species": "human", "relevant_quote": "Here, we show that ataxin-3 is recruited to the E3 ubiquitin ligase CHIP after CHIP monoubiquitylates itself. Ataxin-3 then potently restricts the length of ubiquitin chains attached to a chaperone-bound substrate."}]}]}, {"primary": "VCP", "direction": "bidirectional", "arrow": "binds", "intent": "binding", "pmids": ["22957008"], "confidence": 0.95, "evidence": [{"pmid": "22957008", "doi": "10.1371/journal.pone.0043563", "paper_title": "Valosin-Containing Protein (VCP/p97) Is an Activator of Wild-Type Ataxin-3", "authors": "La\u00e7o MN, Cortes L, Travis SM, Paulson HL, Rego AC.", "journal": "PLoS ONE", "year": 2012, "assay": "in vitro deubiquitination assays, co-localization studies", "species": "human", "relevant_quote": "We investigated ataxin-3 deubiquitinating activity and the functional relevance of ataxin-3 interactions with two proteins previously described to interact with ataxin-3, hHR23A and valosin-containing protein (VCP/p97). We confirmed ataxin-3 affinity for both hHR23A and VCP/p97."}], "support_summary": "ATXN3 directly interacts with VCP/p97, an AAA+ ATPase involved in protein degradation. VCP activates the deubiquitinase activity of wild-type ATXN3.", "functions": [{"function": "Activation of Deubiquitinase Activity", "arrow": "activates", "cellular_process": "Binding of VCP/p97 to ATXN3.", "biological_consequence": "Enhancement of the ubiquitin hydrolase activity of wild-type ATXN3, increasing its efficiency in cleaving ubiquitin chains from substrates.", "specific_effects": ["Increases ATXN3 catalytic activity"], "pmids": ["22957008"], "doi": "10.1371/journal.pone.0043563", "confidence": 0.9, "note": "VCP/p97 specifically activates the deubiquitinating activity of wild-type ATXN3.", "evidence": [{"pmid": "22957008", "doi": "10.1371/journal.pone.0043563", "paper_title": "Valosin-Containing Protein (VCP/p97) Is an Activator of Wild-Type Ataxin-3", "authors": "La\u00e7o MN, Cortes L, Travis SM, Paulson HL, Rego AC.", "journal": "PLoS ONE", "year": 2012, "assay": "in vitro deubiquitination assays, co-localization studies", "species": "human", "relevant_quote": "We investigated ataxin-3 deubiquitinating activity and the functional relevance of ataxin-3 interactions with two proteins previously described to interact with ataxin-3, hHR23A and valosin-containing protein (VCP/p97). We confirmed ataxin-3 affinity for both hHR23A and VCP/p97."}]}, {"function": "Regulation of ERAD", "arrow": "inhibits", "cellular_process": "Binding to VCP and modulating its interaction with the Ufd1-Npl4 complex.", "biological_consequence": "Inhibits the VCP-dependent retrotranslocation of misfolded proteins from the endoplasmic reticulum to the cytosol for degradation, thereby regulating protein flow through the ERAD pathway.", "specific_effects": ["Decreases VCP interaction with Ufd1", "Inhibits retrotranslocation of ERAD substrates"], "pmids": ["16825422"], "doi": "10.1093/hmg/ddl164", "confidence": 0.9, "note": "ATXN3 and Ufd1 bind to VCP in a mutually exclusive manner, suggesting ATXN3 directly competes with the ERAD machinery.", "evidence": [{"pmid": "16825422", "doi": "10.1093/hmg/ddl164", "paper_title": "Ataxin-3, the Machado-Joseph disease gene product, suppresses ERAD-enhanced neurodegeneration", "authors": "Wang Q, Li L, Ye Y.", "journal": "Human Molecular Genetics", "year": 2006, "assay": "co-immunoprecipitation", "species": "human", "relevant_quote": "We found that ataxin-3 and Ufd1 bind to VCP in a mutually exclusive manner... Overexpression of ataxin-3 inhibits the retro-translocation of a well-characterized ERAD substrate."}]}, {"function": "DNA Damage Response Regulation", "arrow": "activates", "cellular_process": "Formation of a complex with VCP/p97 to regulate RNF8 homeostasis.", "biological_consequence": "The p97-ATXN3 complex facilitates RNF8 chromatin extraction at DNA lesions \u2192 balances DSB repair pathway choice \u2192 promotes cell survival after genotoxic stress.", "specific_effects": ["Facilitates RNF8 chromatin extraction"], "pmids": ["31524227"], "doi": "10.15252/embj.2019101804", "confidence": 0.85, "evidence": [{"pmid": "31524227", "doi": "10.15252/embj.2019101804", "paper_title": "p97-ATXN3-RNF8 axis ensures balanced DSB repair pathway choice and genomic stability", "authors": "van den Boom J, Heberle AM, Hanzlikova H, Theile S, Varghese J, Ranes M, Gatti M, Zaffagnini G, Caldecott KW, Adelman CA, Wollscheid B, Altmeyer M.", "journal": "The EMBO Journal", "year": 2019, "assay": "co-immunoprecipitation", "species": "human", "relevant_quote": "Here, we identify the deubiquitinase ATXN3 as a key regulator of RNF8 homeostasis at DNA lesions. We show that ATXN3 is recruited to DSBs in a p97-dependent manner, where it forms a trimeric complex with p97 and RNF8."}]}, {"function": "Lysosome Regeneration", "arrow": "activates", "cellular_process": "Targeting and turnover of K48-K63-branched ubiquitin chains on damaged lysosomes.", "biological_consequence": "ATXN3 and VCP/p97 process K48-K63-branched ubiquitin chains on lysosomal proteins like LAMP2 \u2192 facilitates LAMP2 degradation via microautophagy \u2192 regenerates the lysosomal membrane and restores degradative capacity.", "specific_effects": ["Removes ubiquitin chains from lysosomal proteins"], "pmids": ["38871537"], "doi": "10.1083/jcb.202305162", "confidence": 0.8, "evidence": [{"pmid": "38871537", "doi": "10.1083/jcb.202305162", "paper_title": "ATXN3 and VCP/p97 drive K48-K63-branched ubiquitin-dependent lysosome regeneration", "authors": "Sch\u00e4fer JA, Augustin L, Papadopoulos C, Heide H, Todorova V, Dikic I, Meyer H.", "journal": "Journal of Cell Biology", "year": 2024, "assay": "in vitro deubiquitination assay", "species": "human", "relevant_quote": "Here, we show that the deubiquitinase (DUB) ATXN3 and its cofactor VCP/p97 are recruited to damaged lysosomes and specifically process K48-K63-branched ubiquitin chains to promote lysosome regeneration."}]}]}, {"primary": "PRKN", "direction": "bidirectional", "arrow": "binds", "intent": "ubiquitination", "pmids": ["23653603", "39014163"], "confidence": 0.9, "evidence": [{"pmid": "23653603", "doi": "10.3389/fnmol.2013.00010", "paper_title": "Ataxin-3 and Its E3 Partners: Implications for Machado\u2013Joseph Disease", "authors": "Durcan TM, Fon EA.", "journal": "Frontiers in Molecular Neuroscience", "year": 2013, "assay": "in vitro binding data", "species": "human", "relevant_quote": "Given that ataxin-3 and parkin interact directly, as demonstrated from in vitro binding data, how then is ataxin-3 interfering with the ability of parkin to ubiquitinate itself."}, {"pmid": "39014163", "doi": "10.1007/s00401-024-02762-6", "paper_title": "The parkin V380L variant is a genetic modifier of Machado\u2013Joseph disease with impact on mitophagy", "authors": "Weber JJ, Czisch L, Sena PP, Fath F, Schmidt T, Gasser T, Synofzik M, Riess O, van der Zee J, van Broeckhoven C, Kr\u00fcger R, den Dunnen WF, Klockgether T, Trasch\u00fctz A, Hengel H.", "journal": "Acta Neuropathologica", "year": 2024, "assay": "Co-immunoprecipitation", "species": "human", "relevant_quote": "Functional analysis in an MJD cell model demonstrated that parkin V380L did not modulate soluble or aggregate levels of ataxin-3 but reduced the interaction of the two proteins."}], "support_summary": "ATXN3 directly interacts with the E3 ubiquitin ligase Parkin, regulating its self-ubiquitination and activity, with implications for mitophagy.", "multiple_mechanisms": true, "functions": [{"function": "Regulation of E3", "arrow": "inhibits", "cellular_process": "Deubiquitination of Parkin, counteracting its self-ubiquitination.", "biological_consequence": "Removes ubiquitin chains from Parkin \u2192 stabilizes Parkin and prevents its auto-ubiquitination-mediated degradation \u2192 modulates its E3 ligase activity required for mitophagy.", "specific_effects": ["Cleaves self-ubiquitination chains on Parkin"], "pmids": ["17923485"], "doi": "10.1073/pnas.0708354104", "confidence": 0.85, "mechanism_id": "1", "note": "ATXN3 cleaves ubiquitin chains from Parkin, thereby regulating its activity.", "evidence": [{"pmid": "17923485", "doi": "10.1073/pnas.0708354104", "paper_title": "Ataxin-3 regulates parkin ubiquitination in a pathogenic interaction implicated in Machado-Joseph disease", "authors": "Durcan TM, Kontogiannea M, Thorarinsdottir T, Fallon L, Williams AJ, Djarmati A, Gasser T, Fon EA.", "journal": "Proceedings of the National Academy of Sciences of the United States of America", "year": 2007, "assay": "in vitro deubiquitination assay", "species": "human", "relevant_quote": "Here, we report that ataxin-3, the protein mutated in Machado-Joseph disease (MJD), interacts with parkin and regulates its ubiquitination. Ataxin-3 cleaves the ubiquitin chains from parkin, thereby counteracting its self-ubiquitination."}]}, {"function": "Regulation of Mitophagy", "arrow": "activates", "cellular_process": "Promotion of Parkin degradation via autophagy.", "biological_consequence": "Deubiquitination of Parkin by mutant ATXN3 enhances its clearance via autophagy \u2192 impacts the removal of damaged mitochondria (mitophagy).", "specific_effects": ["Promotes autophagic clearance of Parkin"], "pmids": ["21060900", "21116127"], "doi": "10.1093/hmg/ddq448", "confidence": 0.8, "note": "This effect is more pronounced with mutant, polyQ-expanded ATXN3, which deubiquitinates Parkin more efficiently and promotes its clearance via autophagy.", "evidence": [{"pmid": "21060900", "doi": "10.1093/hmg/ddq448", "paper_title": "Mutant ataxin-3 with an expanded polyglutamine tract enhances parkin translocation and autophagic clearance of mitochondria", "authors": "Chou AH, Chou KY, Weng YH, Wang HL.", "journal": "Human Molecular Genetics", "year": 2011, "assay": "cell culture", "species": "human", "relevant_quote": "Here, we show that mutant ataxin-3 enhances parkin translocation to the damaged mitochondria and promotes the autophagic clearance of mitochondria."}, {"pmid": "21116127", "doi": "10.1016/j.nbd.2010.11.011", "paper_title": "Ataxin-3 is a novel substrate of parkin and an inhibitor of mitophagy", "authors": "Que R, Chen Y, Wang Q, Zhang Z, Chen Y, Wang J, Zhang Z.", "journal": "Neurobiology of Disease", "year": 2011, "assay": "co-immunoprecipitation", "species": "human", "relevant_quote": "We found that ataxin-3 interacts with parkin, and is ubiquitinated by parkin in vitro and in vivo. The ubiquitination of ataxin-3 promotes its degradation via autophagy."}]}]}, {"primary": "HDAC3", "direction": "bidirectional", "arrow": "binds", "intent": "deubiquitination", "pmids": ["29802126", "17082464"], "confidence": 0.9, "evidence": [{"pmid": "29802126", "doi": "10.4049/jimmunol.1800285", "paper_title": "ATXN3 Positively Regulates Type I IFN Antiviral Response by Deubiquitinating and Stabilizing HDAC3", "authors": "Zheng H, Yang Y, Xia Y, Wang Y, Wang S, Chen J, Chen Y, Jiang X, Gao Y, Xu H, Wu L, Liu H, Chen Q.", "journal": "The Journal of Immunology", "year": 2018, "assay": "Co-immunoprecipitation, GST pull-down", "species": "human, mouse", "relevant_quote": "Furthermore, ATXN3 physically interacts with histone deacetylase 3 (HDAC3) and upregulates the level of HDAC3 protein. Moreover, ATXN3 deubiquitinates HDAC3, thereby enhancing HDAC3 protein stability."}, {"pmid": "17082464", "doi": "10.1523/JNEUROSCI.3333-06.2006", "paper_title": "Ataxin-3 Represses Transcription via Chromatin Binding, Interaction with Histone Deacetylase 3, and Histone Deacetylation", "authors": "Evert BO, Araujo J, Cesa M, W\u00fcllner U, Klockgether T, Voos W, Heneka MT.", "journal": "The Journal of Neuroscience", "year": 2006, "assay": "co-immunoprecipitation, GST pull-down", "species": "human", "relevant_quote": "To analyze whether AT3 interacts with HDAC3 and NCoR, we performed coimmunoprecipitations and GST fusion protein pulldown experiments by using nuclear extracts of SCA3 cell lines. Immunoprecipitations with an AT3-specific antibody showed that both endogenous HDAC3 (Fig. 4A, top) and NCoR (Fig. 4B, top) coprecipitated with AT3 in Q23 and Q70 cells."}], "support_summary": "ATXN3 interacts with HDAC3, deubiquitinating it to enhance its stability. This interaction is crucial for transcriptional repression and chromatin organization.", "multiple_mechanisms": true, "functions": [{"function": "Stabilization", "arrow": "activates", "cellular_process": "Deubiquitination of HDAC3.", "biological_consequence": "Enhances HDAC3 protein stability \u2192 promotes IFN-I-induced signaling \u2192 potentiates the type I interferon antiviral response.", "specific_effects": ["Upregulates HDAC3 protein level", "Enhances IFN-I-mediated signaling"], "pmids": ["29802126"], "doi": "10.4049/jimmunol.1800285", "confidence": 0.9, "mechanism_id": "1", "evidence": [{"pmid": "29802126", "doi": "10.4049/jimmunol.1800285", "paper_title": "ATXN3 Positively Regulates Type I IFN Antiviral Response by Deubiquitinating and Stabilizing HDAC3", "authors": "Zheng H, Yang Y, Xia Y, Wang Y, Wang S, Chen J, Chen Y, Jiang X, Gao Y, Xu H, Wu L, Liu H, Chen Q.", "journal": "The Journal of Immunology", "year": 2018, "assay": "Co-immunoprecipitation, GST pull-down", "species": "human, mouse", "relevant_quote": "Furthermore, ATXN3 physically interacts with histone deacetylase 3 (HDAC3) and upregulates the level of HDAC3 protein. Moreover, ATXN3 deubiquitinates HDAC3, thereby enhancing HDAC3 protein stability."}]}, {"function": "Chromatin Organization", "arrow": "activates", "cellular_process": "Recruitment of HDAC3 to chromatin.", "biological_consequence": "Promotes chromatin compaction, leading to increased heterochromatin, which in turn controls global DNA replication and transcription.", "specific_effects": ["Controls subcellular localization of HDAC3", "Represses transcription"], "pmids": ["36980312"], "doi": "10.1093/nar/gkad196", "confidence": 0.85, "mechanism_id": "2", "note": "This function is independent of ATXN3's catalytic activity.", "evidence": [{"pmid": "36980312", "doi": "10.1093/nar/gkad196", "paper_title": "Ataxin-3 promotes heterochromatin formation and DNA replication by controlling the chromatin localization of HDAC3", "authors": "Zhang Y, Gu J, Xia Y, Wang S, Xu H, Wu L, Liu H, Chen Q.", "journal": "Nucleic Acids Research", "year": 2023, "assay": "ChIP-seq", "species": "human", "relevant_quote": "Here, we report that ATXN3 promotes chromatin compaction and controls the subcellular localization of HDAC3. ATXN3 deficiency leads to a global reduction in heterochromatin, which in turn results in increased chromatin accessibility and accelerated DNA replication."}]}]}, {"primary": "RAD23A", "direction": "bidirectional", "arrow": "binds", "intent": "binding", "pmids": ["10915768"], "confidence": 0.9, "evidence": [{"pmid": "10915768", "doi": "10.1093/hmg/9.12.1795", "paper_title": "Ataxin-3, the MJD1 gene product, interacts with the two human homologs of yeast DNA repair protein RAD23, HHR23A and HHR23B", "authors": "Wang G, Sawai N, Kotliarova S, Kanazawa I, Nukina N.", "journal": "Human Molecular Genetics", "year": 2000, "assay": "yeast two-hybrid, GST pull-down", "species": "human", "relevant_quote": "We found that ataxin-3 interacts with two human homologs of the yeast DNA repair protein RAD23, HHR23A and HHR23B."}], "support_summary": "ATXN3 directly binds to RAD23A (HHR23A), a key protein in nucleotide excision repair and proteasomal degradation pathways.", "functions": [{"function": "Protein Trafficking", "arrow": "activates", "cellular_process": "Binding to RAD23A, a proteasomal shuttle protein.", "biological_consequence": "Binds polyubiquitinated substrates and the 26S proteasome \u2192 shuttles substrates to the proteasome for degradation.", "specific_effects": ["Modulates proteasomal degradation"], "pmids": ["17317799"], "confidence": 0.7, "note": "The interaction with Rad23 links ATXN3 to the ubiquitin-proteasome pathway, suggesting a role in mediating the degradation of ubiquitinated proteins.", "evidence": [{"pmid": "17317799", "doi": "10.1074/jbc.M609298200", "paper_title": "Ataxin-3, a gene product responsible for Machado-Joseph disease, is a peripheral protein of the endoplasmic reticulum", "authors": "Doss-Pepe EW, Stenroos ES, Johnson WG, Madura K.", "journal": "The Journal of Biological Chemistry", "year": 2007, "assay": "co-immunoprecipitation", "species": "human", "relevant_quote": "...ataxin-3 is a DUB that associates with Rad23 and VCP/p97, two proteins involved in ERAD."}]}]}, {"primary": "NCOR1", "direction": "bidirectional", "arrow": "binds", "intent": "binding", "pmids": ["17082464"], "confidence": 0.85, "evidence": [{"pmid": "17082464", "doi": "10.1523/JNEUROSCI.3333-06.2006", "paper_title": "Ataxin-3 Represses Transcription via Chromatin Binding, Interaction with Histone Deacetylase 3, and Histone Deacetylation", "authors": "Evert BO, Araujo J, Cesa M, W\u00fcllner U, Klockgether T, Voos W, Heneka MT.", "journal": "The Journal of Neuroscience", "year": 2006, "assay": "co-immunoprecipitation", "species": "human", "relevant_quote": "Both normal and expanded AT3 physiologically interacted with HDAC3 and NCoR in a SCA3 cell model and human pons tissue..."}], "support_summary": "ATXN3 interacts with the nuclear receptor corepressor NCOR1 as part of a transcriptional repressor complex that includes HDAC3.", "functions": [{"function": "Transcription", "arrow": "inhibits", "cellular_process": "Formation of a transcriptional repressor complex with NCOR1 and HDAC3.", "biological_consequence": "Recruitment of the ATXN3/NCOR1/HDAC3 complex to gene promoters \u2192 histone deacetylation \u2192 chromatin condensation \u2192 transcriptional repression.", "specific_effects": ["Represses MMP-2 gene transcription"], "pmids": ["17082464"], "doi": "10.1523/JNEUROSCI.3333-06.2006", "confidence": 0.8, "evidence": [{"pmid": "17082464", "doi": "10.1523/JNEUROSCI.3333-06.2006", "paper_title": "Ataxin-3 Represses Transcription via Chromatin Binding, Interaction with Histone Deacetylase 3, and Histone Deacetylation", "authors": "Evert BO, Araujo J, Cesa M, W\u00fcllner U, Klockgether T, Voos W, Heneka MT.", "journal": "The Journal of Neuroscience", "year": 2006, "assay": "co-immunoprecipitation", "species": "human", "relevant_quote": "Both normal and expanded AT3 physiologically interacted with HDAC3 and NCoR in a SCA3 cell model and human pons tissue..."}]}]}, {"primary": "FOXO4", "direction": "bidirectional", "arrow": "binds", "intent": "binding", "pmids": ["21596813"], "confidence": 0.8, "evidence": [{"pmid": "21596813", "doi": "10.1093/hmg/ddr214", "paper_title": "FOXO4-dependent upregulation of superoxide dismutase-2 in response to oxidative stress is impaired in spinocerebellar ataxia type 3", "authors": "Chou AH, Chen YL, Chen YC, Yeh TH, Weng YH, Wang HL.", "journal": "Human Molecular Genetics", "year": 2011, "assay": "co-immunoprecipitation", "species": "human", "relevant_quote": "Here, we show that ATXN3 interacts with the forkhead box O (FOXO) transcription factor FOXO4 and activates the FOXO4-dependent transcription of the manganese superoxide dismutase (SOD2) gene."}], "support_summary": "ATXN3 interacts with the transcription factor FOXO4, acting as a coactivator for the antioxidant gene SOD2 in response to oxidative stress.", "functions": [{"function": "Transcriptional Activation", "arrow": "activates", "cellular_process": "Acts as a transcriptional coactivator for FOXO4.", "biological_consequence": "Upon oxidative stress, ATXN3 and FOXO4 translocate to the nucleus \u2192 bind to the SOD2 gene promoter \u2192 upregulate SOD2 expression \u2192 contributes to cellular antioxidant defense.", "specific_effects": ["Increases SOD2 expression"], "pmids": ["21596813"], "doi": "10.1093/hmg/ddr214", "confidence": 0.9, "note": "Upon oxidative stress, ATXN3 and FOXO4 translocate to the nucleus and bind to the SOD2 gene promoter.", "evidence": [{"pmid": "21596813", "doi": "10.1093/hmg/ddr214", "paper_title": "FOXO4-dependent upregulation of superoxide dismutase-2 in response to oxidative stress is impaired in spinocerebellar ataxia type 3", "authors": "Chou AH, Chen YL, Chen YC, Yeh TH, Weng YH, Wang HL.", "journal": "Human Molecular Genetics", "year": 2011, "assay": "co-immunoprecipitation", "species": "human", "relevant_quote": "Here, we show that ATXN3 interacts with the forkhead box O (FOXO) transcription factor FOXO4 and activates the FOXO4-dependent transcription of the manganese superoxide dismutase (SOD2) gene."}]}]}, {"primary": "PML", "direction": "bidirectional", "arrow": "binds", "intent": "binding", "pmids": ["25381363"], "confidence": 0.9, "evidence": [{"pmid": "25381363", "doi": "10.1242/jcs.157022", "paper_title": "PML-II recruits ataxin-3 to PML-NBs and inhibits its deubiquitinating activity", "authors": "Tao T, Liu Y, Chen J, Chen Z, Xu H, Chen Q.", "journal": "Journal of Cell Science", "year": 2015, "assay": "Co-immunoprecipitation, GST pull-down", "species": "human", "relevant_quote": "Here, we report that ataxin-3 (ATXN3) is a novel interacting protein of promyelocytic leukemia protein (PML). ATXN3 physically interacts with PML isoform II (PML-II) in vivo and in vitro."}], "support_summary": "ATXN3 directly interacts with PML-II, which recruits it to PML nuclear bodies and subsequently inhibits its deubiquitinase activity.", "multiple_mechanisms": true, "functions": [{"function": "Inhibition of Deubiquitinase Activity", "arrow": "inhibits", "cellular_process": "Recruitment of ATXN3 to PML nuclear bodies by PML-II.", "biological_consequence": "Inhibition of the deubiquitinating activity of ATXN3.", "specific_effects": ["Reduces ATXN3 catalytic activity"], "pmids": ["25381363"], "doi": "10.1242/jcs.157022", "confidence": 0.9, "mechanism_id": "2", "evidence": [{"pmid": "25381363", "doi": "10.1242/jcs.157022", "paper_title": "PML-II recruits ataxin-3 to PML-NBs and inhibits its deubiquitinating activity", "authors": "Tao T, Liu Y, Chen J, Chen Z, Xu H, Chen Q.", "journal": "Journal of Cell Science", "year": 2015, "assay": "Co-immunoprecipitation, GST pull-down", "species": "human", "relevant_quote": "Here, we report that ataxin-3 (ATXN3) is a novel interacting protein of promyelocytic leukemia protein (PML). ATXN3 physically interacts with PML isoform II (PML-II) in vivo and in vitro."}]}]}, {"primary": "EP300", "direction": "bidirectional", "arrow": "binds", "intent": "binding", "pmids": ["12101228"], "confidence": 0.85, "evidence": [{"pmid": "12101228", "doi": "10.1128/MCB.22.16.5877-5887.2002", "paper_title": "Ataxin-3 is a histone-binding protein with two independent transcriptional corepressor activities", "authors": "Li F, Chibanga T, Fischer B, La Spada AR, Taylor JP.", "journal": "Molecular and Cellular Biology", "year": 2002, "assay": "GST pull-down, co-immunoprecipitation", "species": "human", "relevant_quote": "Ataxin-3 also binds directly to the histone acetyltransferases p300 and CREB-binding protein (CBP) and represses their transcriptional activity."}], "support_summary": "ATXN3 directly binds to the histone acetyltransferase EP300 (p300) and acts as a transcriptional corepressor.", "functions": [{"function": "Transcription", "arrow": "inhibits", "cellular_process": "Binding to the histone acetyltransferase EP300.", "biological_consequence": "Repression of EP300's transcriptional co-activator function, leading to decreased gene expression.", "specific_effects": ["Inhibits histone acetyltransferase activity"], "pmids": ["12101228"], "doi": "10.1128/MCB.22.16.5877-5887.2002", "confidence": 0.8, "evidence": [{"pmid": "12101228", "doi": "10.1128/MCB.22.16.5877-5887.2002", "paper_title": "Ataxin-3 is a histone-binding protein with two independent transcriptional corepressor activities", "authors": "Li F, Chibanga T, Fischer B, La Spada AR, Taylor JP.", "journal": "Molecular and Cellular Biology", "year": 2002, "assay": "GST pull-down, co-immunoprecipitation", "species": "human", "relevant_quote": "Ataxin-3 also binds directly to the histone acetyltransferases p300 and CREB-binding protein (CBP) and represses their transcriptional activity."}]}]}, {"primary": "CREBBP", "direction": "bidirectional", "arrow": "binds", "intent": "binding", "pmids": ["12101228"], "confidence": 0.85, "evidence": [{"pmid": "12101228", "doi": "10.1128/MCB.22.16.5877-5887.2002", "paper_title": "Ataxin-3 is a histone-binding protein with two independent transcriptional corepressor activities", "authors": "Li F, Chibanga T, Fischer B, La Spada AR, Taylor JP.", "journal": "Molecular and Cellular Biology", "year": 2002, "assay": "GST pull-down, co-immunoprecipitation", "species": "human", "relevant_quote": "Ataxin-3 also binds directly to the histone acetyltransferases p300 and CREB-binding protein (CBP) and represses their transcriptional activity."}], "support_summary": "ATXN3 directly binds to the histone acetyltransferase CREBBP (CBP) and represses its transcriptional activity.", "functions": [{"function": "Transcription", "arrow": "inhibits", "cellular_process": "Binding to the histone acetyltransferase CREBBP.", "biological_consequence": "Repression of CREBBP's transcriptional co-activator function, leading to decreased gene expression.", "specific_effects": ["Inhibits histone acetyltransferase activity"], "pmids": ["12101228"], "doi": "10.1128/MCB.22.16.5877-5887.2002", "confidence": 0.8, "evidence": [{"pmid": "12101228", "doi": "10.1128/MCB.22.16.5877-5887.2002", "paper_title": "Ataxin-3 is a histone-binding protein with two independent transcriptional corepressor activities", "authors": "Li F, Chibanga T, Fischer B, La Spada AR, Taylor JP.", "journal": "Molecular and Cellular Biology", "year": 2002, "assay": "GST pull-down, co-immunoprecipitation", "species": "human", "relevant_quote": "Ataxin-3 also binds directly to the histone acetyltransferases p300 and CREB-binding protein (CBP) and represses their transcriptional activity."}]}]}, {"primary": "PNKP", "direction": "main_to_primary", "arrow": "inhibits", "intent": "binding", "pmids": ["25932857"], "confidence": 0.9, "evidence": [{"pmid": "25932857", "doi": "10.1371/journal.pgen.1005188", "paper_title": "Inactivation of PNKP by Mutant ATXN3 Triggers Apoptosis by Activating the DNA Damage-Response Pathway in SCA3", "authors": "Chatterjee A, Saha S, Chakraborty A, Silva-Fernandes A, Mandal SM, Liu Y, Basu S.", "journal": "PLoS Genetics", "year": 2015, "assay": "Co-immunoprecipitation, GST pull-down", "species": "human, mouse", "relevant_quote": "In the present study, we show that the essential DNA strand break repair enzyme PNKP (polynucleotide kinase 3'-phosphatase) interacts with, and is inactivated by, the mutant ATXN3, resulting in inefficient DNA repair..."}], "support_summary": "ATXN3 interacts with the DNA repair enzyme PNKP. Mutant ATXN3 inactivates PNKP, leading to accumulation of DNA damage and activation of apoptosis.", "multiple_mechanisms": true, "functions": [{"function": "DNA Repair Regulation", "arrow": "activates", "cellular_process": "Binding to and stimulation of PNKP's 3'-phosphatase activity.", "biological_consequence": "Stimulation of PNKP's 3'-phosphatase activity \u2192 enhances single-strand break repair (SSBR) and nonhomologous end joining (NHEJ) pathways \u2192 maintenance of genomic integrity.", "specific_effects": ["Stimulates PNKP 3'-phosphatase activity"], "pmids": ["25932857", "25932860"], "confidence": 0.9, "mechanism_id": "0", "normal_role": "Wild-type ATXN3 stimulates PNKP activity.", "note": "In contrast, mutant ATXN3 inhibits PNKP activity, leading to accumulation of DNA damage.", "evidence": [{"pmid": "25932860", "doi": "10.1093/nar/gkv423", "paper_title": "Ataxin-3 regulates DNA strand break repair", "authors": "Gao R, Liu Y, Silva-Fernandes A, Fang E, R\u00f8rth K, M\u00f8llg\u00e5rd K, Rasmussen LJ, Storm-Mathisen J, Nilsen H.", "journal": "Nucleic Acids Research", "year": 2015, "assay": "in vitro phosphatase assay", "species": "human", "relevant_quote": "Here we show that ATXN3 interacts with the DNA strand break repair enzyme polynucleotide kinase 3'-phosphatase (PNKP) and stimulates its 3'-phosphatase activity, a critical step in several DNA strand break repair pathways."}]}]}, {"primary": "TP53", "direction": "main_to_primary", "arrow": "binds", "intent": "deubiquitination", "pmids": ["27154212"], "confidence": 0.85, "evidence": [{"pmid": "27154212", "doi": "10.1038/srep25633", "paper_title": "Ataxin-3 regulates p53 stability and apoptosis in a deubiquitination-dependent manner", "authors": "Liu Y, He F, Zhang C, Li J, Chen Y, Liu H, Chen Q.", "journal": "Scientific Reports", "year": 2016, "assay": "Co-immunoprecipitation, GST pull-down", "species": "human", "relevant_quote": "Here, we report that ataxin-3 interacts with and stabilizes p53 by antagonizing Mdm2-mediated ubiquitination and degradation of p53. The deubiquitinase activity of ataxin-3 is required for p53 stabilization."}], "support_summary": "ATXN3 interacts with TP53 and deubiquitinates it, preventing Mdm2-mediated degradation and thereby stabilizing p53 levels.", "functions": [{"function": "Regulation of Apoptosis", "arrow": "activates", "cellular_process": "Deubiquitination of TP53.", "biological_consequence": "Stabilization of p53 \u2192 increased transcription of pro-apoptotic target genes (e.g., BAX, PUMA) \u2192 induction of apoptosis.", "specific_effects": ["Stabilizes p53 protein"], "pmids": ["27154212"], "doi": "10.1038/srep25633", "confidence": 0.9, "evidence": [{"pmid": "27154212", "doi": "10.1038/srep25633", "paper_title": "Ataxin-3 regulates p53 stability and apoptosis in a deubiquitination-dependent manner", "authors": "Liu Y, He F, Zhang C, Li J, Chen Y, Liu H, Chen Q.", "journal": "Scientific Reports", "year": 2016, "assay": "Co-immunoprecipitation, GST pull-down", "species": "human", "relevant_quote": "Here, we report that ataxin-3 interacts with and stabilizes p53 by antagonizing Mdm2-mediated ubiquitination and degradation of p53. The deubiquitinase activity of ataxin-3 is required for p53 stabilization."}]}, {"function": "Regulation of Cell", "arrow": "activates", "cellular_process": "Stabilization of TP53, leading to regulation of p53-dependent transcription.", "biological_consequence": "Promotes p53-dependent cell cycle arrest at the G2/M checkpoint in response to cellular stress.", "specific_effects": ["Promotes G2/M arrest"], "pmids": ["27154212"], "doi": "10.1038/srep25633", "confidence": 0.85, "evidence": [{"pmid": "27154212", "doi": "10.1038/srep25633", "paper_title": "Ataxin-3 regulates p53 stability and apoptosis in a deubiquitination-dependent manner", "authors": "Liu Y, He F, Zhang C, Li J, Chen Y, Liu H, Chen Q.", "journal": "Scientific Reports", "year": 2016, "assay": "Co-immunoprecipitation, GST pull-down", "species": "human", "relevant_quote": "Here, we report that ataxin-3 interacts with and stabilizes p53 by antagonizing Mdm2-mediated ubiquitination and degradation of p53. The deubiquitinase activity of ataxin-3 is required for p53 stabilization."}]}]}, {"primary": "HDAC6", "direction": "bidirectional", "arrow": "binds", "intent": "binding", "pmids": ["21865331"], "confidence": 0.8, "evidence": [{"pmid": "21865331", "doi": "10.1093/hmg/ddr361", "paper_title": "Ataxin-3 interacts with tubulin and microtubules and its abnormal association with the microtubular network in Machado-Joseph disease", "authors": "Araujo J, Breuer P, Evert BO, Wuellner U, Klockgether T, Heneka MT.", "journal": "Human Molecular Genetics", "year": 2011, "assay": "co-immunoprecipitation", "species": "human", "relevant_quote": "Furthermore, ataxin-3 also interacts with the microtubule-associated histone deacetylase 6 (HDAC6), which has been implicated in the regulation of protein degradation."}], "support_summary": "ATXN3 interacts with the microtubule-associated histone deacetylase HDAC6, linking it to protein degradation and cytoskeleton dynamics.", "functions": [{"function": "Stabilization", "arrow": "activates", "cellular_process": "Deubiquitination of HDAC6.", "biological_consequence": "Stabilization of HDAC6 \u2192 activation of the PI3K/AKT signaling pathway \u2192 promotes cell proliferation, migration, and invasion in pancreatic cancer.", "specific_effects": ["Regulates HDAC6 degradation", "Promotes cell proliferation and migration"], "pmids": ["37460341"], "doi": "10.1016/j.pan.2023.06.011", "confidence": 0.8, "evidence": [{"pmid": "37460341", "doi": "10.1016/j.pan.2023.06.011", "paper_title": "Deubiquitinase ATXN3 promotes the progression of pancreatic cancer by stabilizing HDAC6 and activating PI3K/AKT signaling pathway", "authors": "Wang Y, Zhang J, Wang L, Li Z, Liu Y, Zhang Y, Zhang Y.", "journal": "Pancreatology", "year": 2023, "assay": "co-immunoprecipitation", "species": "human", "relevant_quote": "Mechanistically, ATXN3 interacted with and deubiquitinated HDAC6 to regulate its degradation, thereby activating the PI3K/AKT signaling pathway."}]}, {"function": "Aggresome Formation", "arrow": "activates", "cellular_process": "Generation of unanchored ubiquitin C-termini on protein aggregates.", "biological_consequence": "Enables HDAC6 to recognize and bind protein aggregates, facilitating their transport along microtubules to the aggresome for clearance.", "specific_effects": ["Exposes ubiquitin C-termini on aggregates for HDAC6 binding"], "pmids": ["22069321"], "doi": "10.1074/jbc.M111.273730", "confidence": 0.9, "evidence": [{"pmid": "22069321", "doi": "10.1074/jbc.M111.273730", "paper_title": "The deubiquitinating enzyme ataxin-3 generates therapies for protein aggregation diseases", "authors": "Burnett BG, Li F, Pittman RN.", "journal": "The Journal of Biological Chemistry", "year": 2011, "assay": "cell culture", "species": "human", "relevant_quote": "We found that ataxin-3 generated unanchored ubiquitin C termini on aggregates that were required for HDAC6 to bind aggregates and promote their clearance."}]}]}, {"primary": "RHEB", "direction": "main_to_primary", "arrow": "binds", "intent": "deubiquitination", "pmids": ["33157014"], "confidence": 0.9, "evidence": [{"pmid": "33157014", "doi": "10.1038/s41467-020-19442-z", "paper_title": "Ataxin-3 promotes RHEB inactivation and mTORC1 inhibition in response to amino acid deprivation", "authors": "Yang Y, Zheng H, Wang Y, Wang S, Chen J, Xia Y, Chen Y, Jiang X, Gao Y, Xu H, Wu L, Liu H, Chen Q.", "journal": "Nature Communications", "year": 2020, "assay": "Co-immunoprecipitation, GST pull-down", "species": "human", "relevant_quote": "Here, we report that ATXN3 interacts with RHEB, a key activator of mTORC1, and removes K63-linked polyubiquitin chains from RHEB, thereby promoting RHEB inactivation by the TSC-TBC complex."}], "support_summary": "ATXN3 interacts with and deubiquitinates RHEB, leading to RHEB inactivation and subsequent inhibition of the mTORC1 signaling pathway.", "functions": [{"function": "Signaling Pathway Inhibition", "arrow": "inhibits", "cellular_process": "Deubiquitination of RHEB.", "biological_consequence": "Promotes RHEB inactivation by the TSC-TBC complex \u2192 inhibition of mTORC1 signaling in response to amino acid deprivation.", "specific_effects": ["Inhibits mTORC1 activity", "Removes K63-linked polyubiquitin chains from RHEB"], "pmids": ["33157014"], "doi": "10.1038/s41467-020-19442-z", "confidence": 0.95, "evidence": [{"pmid": "33157014", "doi": "10.1038/s41467-020-19442-z", "paper_title": "Ataxin-3 promotes RHEB inactivation and mTORC1 inhibition in response to amino acid deprivation", "authors": "Yang Y, Zheng H, Wang Y, Wang S, Chen J, Xia Y, Chen Y, Jiang X, Gao Y, Xu H, Wu L, Liu H, Chen Q.", "journal": "Nature Communications", "year": 2020, "assay": "Co-immunoprecipitation, GST pull-down", "species": "human", "relevant_quote": "Here, we report that ATXN3 interacts with RHEB, a key activator of mTORC1, and removes K63-linked polyubiquitin chains from RHEB, thereby promoting RHEB inactivation by the TSC-TBC complex."}]}]}, {"primary": "MDC1", "direction": "main_to_primary", "arrow": "binds", "intent": "deubiquitination", "pmids": ["31754492"], "confidence": 0.85, "evidence": [{"pmid": "31754492", "doi": "10.1093/nar/gkz1092", "paper_title": "The deubiquitinating enzyme ATXN3 is a key regulator of the DNA double-strand break response", "authors": "Pinto-Fern\u00e1ndez A, Mac-Nulty C, Hern\u00e1ez-Moya R, Thurston T, G-Casta\u00f1o C, ZJP van der Heijden T, Ariza-Guzman M, Werner R, Sancho-Pelluz J, Knebel A, Eeltink C, van der Knaap JA, Macartney T, Sapkota GP, Polo S, Swatek KN, Fernandez-Saiz V.", "journal": "Nucleic Acids Research", "year": 2020, "assay": "co-immunoprecipitation", "species": "human", "relevant_quote": "Here, we show that ATXN3 interacts with MDC1 and counteracts RNF4-induced polyubiquitination and subsequent chromatin-release of MDC1."}], "support_summary": "ATXN3 interacts with and deubiquitinates the DNA damage response mediator MDC1, stabilizing it at sites of DNA breaks to ensure robust repair signaling.", "functions": [{"function": "DNA Damage Response Regulation", "arrow": "activates", "cellular_process": "Deubiquitination of MDC1.", "biological_consequence": "Prolongs MDC1 residence at DSBs \u2192 ensures efficient recruitment of downstream factors RNF8, RNF168, BRCA1, and 53BP1 \u2192 consolidates DSB repair by NHEJ and HR.", "specific_effects": ["Prolongs MDC1 residence at chromatin", "Consolidates DSB repair"], "pmids": ["31754492", "28273500"], "doi": "10.1093/nar/gkz1092", "confidence": 0.9, "note": "ATXN3 counteracts RNF4-induced polyubiquitination of MDC1.", "evidence": [{"pmid": "28273500", "doi": "10.15252/embj.201695151", "paper_title": "The ATXN3-RNF4-MDC1 axis promotes robust repair of DNA double-strand breaks", "authors": "Pfeiffer A, Herzog F, Gatti M, Zaffagnini G, van den Boom J, Altmeyer M.", "journal": "The EMBO Journal", "year": 2017, "assay": "cell culture", "species": "human", "relevant_quote": "We identify the deubiquitinase ATXN3 as a key component of this DSB response pathway that is recruited to DNA lesions and counteracts RNF4-mediated MDC1 ubiquitination, thereby preventing the premature removal of MDC1 from chromatin."}]}]}, {"primary": "RNF4", "direction": "bidirectional", "arrow": "binds", "intent": "ubiquitination", "pmids": ["31754492"], "confidence": 0.75, "evidence": [{"pmid": "31754492", "doi": "10.1093/nar/gkz1092", "paper_title": "The deubiquitinating enzyme ATXN3 is a key regulator of the DNA double-strand break response", "authors": "Pinto-Fern\u00e1ndez A, Mac-Nulty C, Hern\u00e1ez-Moya R, Thurston T, G-Casta\u00f1o C, ZJP van der Heijden T, Ariza-Guzman M, Werner R, Sancho-Pelluz J, Knebel A, Eeltink C, van der Knaap JA, Macartney T, Sapkota GP, Polo S, Swatek KN, Fernandez-Saiz V.", "journal": "Nucleic Acids Research", "year": 2020, "assay": "co-immunoprecipitation", "species": "human", "relevant_quote": "We find that ATXN3 antagonizes the SUMO-targeted ubiquitin ligase RNF4 at DNA lesions, thereby controlling the signalling outcome."}], "support_summary": "ATXN3 functionally antagonizes the E3 ligase RNF4 at DNA damage sites, forming a regulatory axis that controls the ubiquitination status of DNA repair factors.", "functions": [{"function": "DNA Damage Response Regulation", "arrow": "inhibits", "cellular_process": "Antagonism of RNF4's SUMO-targeted ubiquitin ligase activity.", "biological_consequence": "Counteracts RNF4-mediated ubiquitination of MDC1 \u2192 prevents premature removal of MDC1 from DSBs \u2192 ensures robust signaling for DNA repair.", "specific_effects": ["Counteracts RNF4 activity at DSBs"], "pmids": ["28273500"], "doi": "10.15252/embj.201695151", "confidence": 0.8, "note": "The opposing activities of ATXN3 and RNF4 consolidate robust signaling and repair of double-strand breaks.", "evidence": [{"pmid": "28273500", "doi": "10.15252/embj.201695151", "paper_title": "The ATXN3-RNF4-MDC1 axis promotes robust repair of DNA double-strand breaks", "authors": "Pfeiffer A, Herzog F, Gatti M, Zaffagnini G, van den Boom J, Altmeyer M.", "journal": "The EMBO Journal", "year": 2017, "assay": "cell culture", "species": "human", "relevant_quote": "The opposing activities of the deubiquitinase ATXN3 and the SUMO-targeted ubiquitin ligase RNF4 on the key DNA damage response factor MDC1 consolidate robust signaling and repair of double-strand breaks (DSBs)."}]}]}, {"primary": "KAT5", "direction": "bidirectional", "arrow": "binds", "intent": "binding", "pmids": ["16547091"], "confidence": 0.8, "evidence": [{"pmid": "16547091", "doi": "10.1016/j.neurobiolaging.2005.02.012", "paper_title": "Expanded polyglutamine ataxin-3 causes cerebellar dysfunction by inducing transcriptional dysregulation", "authors": "Chou AH, Yeh TH, Kuo YL, Lin YL, Chen YJ, Chen YC, Wang HL.", "journal": "Neurobiology of Aging", "year": 2006, "assay": "co-immunoprecipitation", "species": "human", "relevant_quote": "Expanded polyglutamine ataxin-3 also co-localizes and interacts with the transcriptional co-activator Tat-interactive protein 60 kDa (TIP60)."}], "support_summary": "ATXN3 interacts with the histone acetyltransferase KAT5 (TIP60), suggesting a role in transcriptional regulation and chromatin remodeling.", "functions": [{"function": "Transcriptional Regulation", "arrow": "inhibits", "cellular_process": "Interaction with the histone acetyltransferase KAT5 (TIP60).", "biological_consequence": "Mutant ATXN3 sequesters KAT5 \u2192 inhibits its histone acetyltransferase activity \u2192 leads to transcriptional repression of target genes.", "specific_effects": ["Modulates KAT5 co-activator function"], "pmids": ["16547091"], "doi": "10.1016/j.neurobiolaging.2005.02.012", "confidence": 0.75, "note": "The study shows that expanded polyglutamine ATXN3 induces transcriptional repression that is counteracted by TIP60/KAT5.", "evidence": [{"pmid": "16547091", "doi": "10.1016/j.neurobiolaging.2005.02.012", "paper_title": "Expanded polyglutamine ataxin-3 causes cerebellar dysfunction by inducing transcriptional dysregulation", "authors": "Chou AH, Yeh TH, Kuo YL, Lin YL, Chen YJ, Chen YC, Wang HL.", "journal": "Neurobiology of Aging", "year": 2006, "assay": "co-immunoprecipitation", "species": "human", "relevant_quote": "Expanded polyglutamine ataxin-3 also co-localizes and interacts with the transcriptional co-activator Tat-interactive protein 60 kDa (TIP60)."}]}]}]};
+
+        let svg, g, width, height, simulation;
+        let nodes = [], links = [];
+        let currentZoom = 1;
+        let mainNodeRadius = 35; // Will be dynamically set
+        let interactorNodeRadius = 28;
+
+        function initNetwork() {
+            document.getElementById('networkTitle').textContent = `${data.main} Protein Interaction Network`;
+            
+            const container = document.getElementById('network');
+            width = container.clientWidth;
+            height = container.clientHeight;
+
+            svg = d3.select('#svg')
+                .attr('width', width)
+                .attr('height', height);
+
+            g = svg.append('g');
+
+            const zoom = d3.zoom()
+                .scaleExtent([0.3, 3])
+                .on('zoom', (event) => {
+                    g.attr('transform', event.transform);
+                    currentZoom = event.transform.k;
+                });
+
+            svg.call(zoom);
+
+            // Calculate dynamic main node radius based on number of interactors
+            const numInteractors = data.interactors.length;
+            mainNodeRadius = Math.min(35 + numInteractors * 2, 80); // Min 35, max 80, grows with interactors
+            
+            const defs = svg.append('defs');
+
+            // Create arrow markers for all arrow types
+            ['activate', 'inhibit', 'binding'].forEach(type => {
+                const color = type === 'activate' ? '#059669' : 
+                             type === 'inhibit' ? '#dc2626' : '#7c3aed';
+                
+                if (type === 'activate') {
+                    defs.append('marker')
+                        .attr('id', `arrow-${type}`)
+                        .attr('viewBox', '0 -5 10 10')
+                        .attr('refX', 10)
+                        .attr('refY', 0)
+                        .attr('markerWidth', 10)
+                        .attr('markerHeight', 10)
+                        .attr('orient', 'auto')
+                        .append('path')
+                        .attr('d', 'M0,-5L10,0L0,5L3,0Z')
+                        .attr('fill', color);
+                } else if (type === 'inhibit') {
+                    defs.append('marker')
+                        .attr('id', `arrow-${type}`)
+                        .attr('viewBox', '0 -5 10 10')
+                        .attr('refX', 10)
+                        .attr('refY', 0)
+                        .attr('markerWidth', 10)
+                        .attr('markerHeight', 10)
+                        .attr('orient', 'auto')
+                        .append('rect')
+                        .attr('x', 6)
+                        .attr('y', -4)
+                        .attr('width', 3)
+                        .attr('height', 8)
+                        .attr('fill', color);
+                } else {
+                    const marker = defs.append('marker')
+                        .attr('id', `arrow-${type}`)
+                        .attr('viewBox', '0 -5 10 10')
+                        .attr('refX', 10)
+                        .attr('refY', 0)
+                        .attr('markerWidth', 10)
+                        .attr('markerHeight', 10)
+                        .attr('orient', 'auto');
+                    
+                    marker.append('rect')
+                        .attr('x', 4)
+                        .attr('y', -4)
+                        .attr('width', 2)
+                        .attr('height', 8)
+                        .attr('fill', color);
+                    
+                    marker.append('rect')
+                        .attr('x', 7)
+                        .attr('y', -4)
+                        .attr('width', 2)
+                        .attr('height', 8)
+                        .attr('fill', color);
+                }
+            });
+
+            processData();
+            createForceSimulation();
+        }
+
+        function calculateDynamicSpacing(numInteractors) {
+            // Calculate spacing parameters based on number of interactors
+            const minRadius = 200;
+            const maxRadius = 500;
+            
+            // Calculate required circumference for optimal spacing
+            const requiredCircumference = numInteractors * 100; // 100px per interactor
+            const calculatedRadius = requiredCircumference / (2 * Math.PI);
+            
+            // Constrain to min/max and ensure proper spacing
+            const interactorRadius = Math.max(minRadius, Math.min(maxRadius, calculatedRadius));
+            
+            // Function radius should be further out
+            const functionRadius = interactorRadius + 150 + (numInteractors * 5);
+            
+            return {
+                interactorRadius: interactorRadius,
+                functionRadius: functionRadius
+            };
+        }
+
+        function processData() {
+            const spacing = calculateDynamicSpacing(data.interactors.length);
+            
+            // Create main node
+            const mainNode = {
+                id: data.main,
+                label: data.main,
+                type: 'main',
+                radius: mainNodeRadius,
+                x: width / 2,
+                y: height / 2,
+                fx: width / 2,
+                fy: height / 2
+            };
+            nodes.push(mainNode);
+
+            // Track bidirectional links
+            const linkPairs = {};
+
+            // First pass: collect all interactions
+            const allInteractions = [];
+            data.interactors.forEach((interactor, i) => {
+                // Check for multiple arrows/directions (bidirectional)
+                if (interactor.all_arrows && interactor.all_arrows.length > 1) {
+                    // Handle multiple interaction types for same interactor
+                    interactor.all_arrows.forEach((arrow, idx) => {
+                        const direction = interactor.all_directions ? interactor.all_directions[idx] :
+                    interactor.direction;
+                        const intent = interactor.all_intents ? interactor.all_intents[idx] :
+                    interactor.intent;
+                        allInteractions.push({
+                            ...interactor,
+                            arrow: arrow || 'binds',
+                            direction: direction,
+                            intent: intent,
+                            interactionIndex: idx
+                        });
+                    });
+                } else {
+                    allInteractions.push({
+                        ...interactor,
+                        arrow: interactor.arrow || 'binds',
+                        interactionIndex: 0
+                    });
+                }
+            });
+
+            // Process interactors and create nodes
+            const processedInteractors = new Set();
+            
+            data.interactors.forEach((interactor, i) => {
+                if (processedInteractors.has(interactor.primary)) {
+                    return; // Skip duplicates
+                }
+                processedInteractors.add(interactor.primary);
+                
+                const angle = (2 * Math.PI * i) / data.interactors.length - Math.PI / 2;
+                
+                const interactorNode = {
+                    id: interactor.primary,
+                    label: interactor.primary,
+                    type: 'interactor',
+                    radius: interactorNodeRadius,
+                    x: width / 2 + Math.cos(angle) * spacing.interactorRadius,
+                    y: height / 2 + Math.sin(angle) * spacing.interactorRadius,
+                    data: interactor,
+                    confidence: interactor.confidence
+                };
+                nodes.push(interactorNode);
+
+                // Process all interactions for this interactor
+                const relatedInteractions = allInteractions.filter(int => int.primary === interactor.primary);
+                
+                relatedInteractions.forEach((interaction, intIdx) => {
+                    const source = interaction.direction === 'primary_to_main' ? interaction.primary : data.main;
+                    const target = interaction.direction === 'primary_to_main' ? data.main : interaction.primary;
+                    
+                    // Create unique link ID
+                    const linkId = `${source}-${target}`;
+                    const reverseLinkId = `${target}-${source}`;
+                    
+                    // Check if reverse link exists
+                    let isBidirectional = false;
+                    let linkOffset = 0;
+                    
+                    if (linkPairs[reverseLinkId]) {
+                        isBidirectional = true;
+                        linkOffset = 1; // This is the second link in the pair
+                        linkPairs[linkId] = { offset: linkOffset, pair: reverseLinkId };
+                    } else if (!linkPairs[linkId]) {
+                        linkPairs[linkId] = { offset: 0, pair: null };
+                    }
+                    
+                    const interactionLink = {
+                        source: source,
+                        target: target,
+                        type: 'interaction',
+                        arrow: interaction.arrow || 'binds',
+                        intent: interaction.intent,
+                        data: interaction,
+                        direction: interaction.direction,
+                        multiple_mechanisms: interaction.multiple_mechanisms,
+                        isBidirectional: isBidirectional,
+                        linkOffset: linkPairs[linkId].offset,
+                        id: linkId
+                    };
+                    links.push(interactionLink);
+                });
+
+                // Process functions
+                let totalFunctions = interactor.functions.length;
+                let functionIndex = 0;
+                
+                // Process regular functions
+                interactor.functions.forEach((func, j) => {
+                    const funcId = `${interactor.primary}_func_${j}`;
+                    const funcAngle = angle + (functionIndex - (totalFunctions - 1) / 2) * (0.15 / Math.sqrt(data.interactors.length));
+                    functionIndex++;
+
+                    const affectedProtein = interactor.direction === 'primary_to_main' ? data.main : interactor.primary;
+                    const isQueryFunction = interactor.direction === 'primary_to_main';
+
+                    const functionNode = {
+                        id: funcId,
+                        label: func.function || 'Function',  // SHORT name from function field
+                        type: 'function',
+                        x: width / 2 + Math.cos(funcAngle) * spacing.functionRadius,
+                        y: height / 2 + Math.sin(funcAngle) * spacing.functionRadius,
+                        data: func,  // This contains all the function data
+                        parent: interactor.primary,
+                        confidence: func.confidence,
+                        isQueryFunction: isQueryFunction,
+                        affectedProtein: affectedProtein,
+                        interactorData: interactor
+                    };
+                    nodes.push(functionNode);
+
+                    links.push({
+                        source: interactor.primary,
+                        target: funcId,
+                        type: 'function',
+                        arrow: func.arrow || 'binds',
+                        data: func
+                    });
+                });
+            });
+        }
+
+        function createForceSimulation() {
+            // Adjust force parameters based on number of nodes
+            const numNodes = nodes.length;
+            const chargeStrength = -500 - (numNodes * 10); // Stronger repulsion with more nodes
+            const linkDistance = d => {
+                if (d.type === 'function') return 150 + (data.interactors.length * 3);
+                return 200 + (data.interactors.length * 10);
+            };
+
+            simulation = d3.forceSimulation(nodes)
+                .force('link', d3.forceLink(links)
+                    .id(d => d.id)
+                    .distance(linkDistance))
+                .force('charge', d3.forceManyBody().strength(chargeStrength))
+                .force('center', d3.forceCenter(width / 2, height / 2))
+                .force('collision', d3.forceCollide().radius(d => {
+                    if (d.type === 'main') return mainNodeRadius + 40;
+                    if (d.type === 'interactor') return interactorNodeRadius + 30;
+                    return 80;
+                }))
+                .force('x', d3.forceX(width / 2).strength(0.01))
+                .force('y', d3.forceY(height / 2).strength(0.01));
+
+            const link = g.append('g')
+                .selectAll('path')
+                .data(links)
+                .enter().append('path')
+                .attr('class', d => {
+                    const arrow = d.arrow || 'binds';
+                    let classes = '';
+                    if (d.intent === 'binding' || arrow === 'binds') {
+                        classes = 'link link-binding';
+                    } else if (arrow === 'activates') {
+                        classes = 'link link-activate';
+                    } else if (arrow === 'inhibits') {
+                        classes = 'link link-inhibit';
+                    }
+                    if (d.type === 'function') {
+                        classes += ' function-link';
+                    }
+                    return classes;
+                })
+                .attr('marker-end', d => {
+                    if (d.type === 'function') return null;
+                    const arrow = d.arrow || 'binds';
+                    if (arrow === 'activates') return 'url(#arrow-activate)';
+                    if (arrow === 'inhibits') return 'url(#arrow-inhibit)';
+                    if (arrow === 'binds' || d.intent === 'binding') return 'url(#arrow-binding)';
+                    return null;
+                })
+                .attr('fill', 'none')
+                .on('click', handleLinkClick);
+
+            const node = g.append('g')
+                .selectAll('g')
+                .data(nodes)
+                .enter().append('g')
+                .attr('class', 'node-group')
+                .call(d3.drag()
+                    .on('start', dragstarted)
+                    .on('drag', dragged)
+                    .on('end', dragended));
+
+            node.each(function(d) {
+                const group = d3.select(this);
+                
+                if (d.type === 'main') {
+                    group.append('circle')
+                        .attr('class', 'node main-node')
+                        .attr('r', mainNodeRadius);
+                    
+                    group.append('text')
+                        .attr('class', 'node-label')
+                        .attr('dy', 5)
+                        .text(d.label);
+                    
+                } else if (d.type === 'interactor') {
+                    group.append('circle')
+                        .attr('class', 'node interactor-node')
+                        .attr('r', interactorNodeRadius);
+                    
+                    group.append('text')
+                        .attr('class', 'node-label')
+                        .attr('dy', 5)
+                        .text(d.label);
+                    
+                    if (d.confidence) {
+                        const confClass = d.confidence >= 0.7 ? 'high' : 
+                                        d.confidence >= 0.5 ? 'medium' : 'low';
+                        group.append('text')
+                            .attr('class', `confidence-badge confidence-${confClass}`)
+                            .attr('dy', -35)
+                            .text(`${Math.round(d.confidence * 100)}%`);
+                    }
+                    
+                } else if (d.type === 'function') {
+                    // Function boxes - display the SHORT function name
+                    const displayText = d.label || 'Function';  // Use the short name
+                    
+                    const tempText = group.append('text')
+                        .attr('class', 'function-label')
+                        .text(displayText)
+                        .attr('visibility', 'hidden');
+                    
+                    const bbox = tempText.node().getBBox();
+                    tempText.remove();
+                    
+                    const padding = 16;
+                    const rectWidth = Math.max(bbox.width + padding * 2, 100);
+                    const rectHeight = Math.max(bbox.height + padding * 1.5, 36);
+                    
+                    const nodeClass = d.isQueryFunction ? 'function-node-query' : 'function-node-interactor';
+                    
+                    const rect = group.append('rect')
+                        .attr('class', `node function-node ${nodeClass}`)
+                        .attr('x', -rectWidth / 2)
+                        .attr('y', -rectHeight / 2)
+                        .attr('width', rectWidth)
+                        .attr('height', rectHeight)
+                        .attr('rx', 6)
+                        .attr('ry', 6)
+                        .on('click', function(event) {
+                            event.stopPropagation();
+                            showFunctionDetails(d);
+                        });
+                    
+                    // Add function text (SHORT name)
+                    group.append('text')
+                        .attr('class', 'function-label')
+                        .attr('dy', 4)
+                        .text(displayText)
+                        .style('pointer-events', 'none');
+                    
+                    // Add indicator if there are specific effects
+                    if (d.data.specific_effects && d.data.specific_effects.length > 0) {
+                        const indicatorGroup = group.append('g')
+                            .attr('transform', `translate(${rectWidth/2 - 12}, ${-rectHeight/2 + 12})`);
+                        
+                        indicatorGroup.append('circle')
+                            .attr('class', 'multi-function-indicator')
+                            .attr('r', 10);
+                        
+                        indicatorGroup.append('text')
+                            .attr('class', 'multi-function-text')
+                            .attr('dy', 4)
+                            .text(d.data.specific_effects.length);
+                    }
+                    
+                    // Add confidence score
+                    if (d.confidence) {
+                        const confClass = d.confidence >= 0.7 ? 'high' : 
+                                        d.confidence >= 0.5 ? 'medium' : 'low';
+                        group.append('text')
+                            .attr('class', `confidence-badge confidence-${confClass}`)
+                            .attr('dy', rectHeight / 2 + 14)
+                            .style('font-size', '12px')
+                            .text(`${Math.round(d.confidence * 100)}%`);
+                    }
+                }
+            });
+
+            simulation.on('tick', () => {
+                link.attr('d', d => {
+                    const source = nodes.find(n => n.id === (d.source.id || d.source));
+                    const target = nodes.find(n => n.id === (d.target.id || d.target));
+                    
+                    if (!source || !target) {
+                        return `M 0 0 L 0 0`;
+                    }
+                    
+                    // Calculate the line from edge to edge of nodes
+                    const dx = target.x - source.x;
+                    const dy = target.y - source.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance === 0) {
+                        return `M ${source.x} ${source.y} L ${target.x} ${target.y}`;
+                    }
+                    
+                    // Get node radii
+                    let sourceRadius = 0;
+                    let targetRadius = 0;
+                    
+                    if (source.type === 'main') sourceRadius = mainNodeRadius;
+                    else if (source.type === 'interactor') sourceRadius = interactorNodeRadius;
+                    
+                    if (target.type === 'main') targetRadius = mainNodeRadius;
+                    else if (target.type === 'interactor') targetRadius = interactorNodeRadius;
+                    
+                    // Calculate offset for bidirectional links
+                    let offsetAmount = 0;
+                    if (d.isBidirectional && d.type === 'interaction') {
+                        offsetAmount = d.linkOffset === 0 ? -8 : 8; // Offset by 8 pixels
+                    }
+                    
+                    // Calculate perpendicular offset
+                    const perpX = -dy / distance * offsetAmount;
+                    const perpY = dx / distance * offsetAmount;
+                    
+                    // Calculate points on the edge of circles with offset
+                    const sourceX = source.x + (dx / distance) * sourceRadius + perpX;
+                    const sourceY = source.y + (dy / distance) * sourceRadius + perpY;
+                    const targetX = target.x - (dx / distance) * targetRadius + perpX;
+                    const targetY = target.y - (dy / distance) * targetRadius + perpY;
+                    
+                    // Use curved path for bidirectional links
+                    if (d.isBidirectional && d.type === 'interaction') {
+                        const midX = (sourceX + targetX) / 2;
+                        const midY = (sourceY + targetY) / 2;
+                        const curveOffset = offsetAmount * 2;
+                        const curveMidX = midX + perpX;
+                        const curveMidY = midY + perpY;
+                        return `M ${sourceX} ${sourceY} Q ${curveMidX} ${curveMidY} ${targetX} ${targetY}`;
+                    }
+                    
+                    return `M ${sourceX} ${sourceY} L ${targetX} ${targetY}`;
+                });
+
+                node.attr('transform', d => `translate(${d.x},${d.y})`);
+            });
+        }
+
+        function handleLinkClick(event, d) {
+            event.stopPropagation();
+            showModal(d);
+        }
+
+        function showFunctionDetails(functionNode) {
+            const modal = document.getElementById('modal');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalBody = document.getElementById('modalBody');
+            
+            modalTitle.textContent = `Function: ${functionNode.label}`;
+            
+            // Format the biological consequence with arrow highlighting
+            let biologicalConsequence = functionNode.data.biological_consequence || 
+                                       'Cascading biological effects not specified';
+            biologicalConsequence = biologicalConsequence.replace(/→/g, '<span class="cascade-arrow">→</span>');
+            
+            let specificEffectsHTML = '';
+            if (functionNode.data.specific_effects && functionNode.data.specific_effects.length > 0) {
+                specificEffectsHTML = `
+                    <tr class="info-row">
+                        <td class="info-label">SPECIFIC EFFECTS</td>
+                        <td class="info-value">
+                            ${functionNode.data.specific_effects.map(effect => `
+                                <div class="specific-effect">• ${effect}</div>
+                            `).join('')}
+                        </td>
+                    </tr>
+                `;
+            }
+            
+            const confValue = functionNode.confidence || 0;
+            const confClass = confValue >= 0.7 ? 'high' : confValue >= 0.5 ? 'medium' : 'low';
+            
+            // Format references with full paper details from evidence
+            let referencesHTML = 'No references available';
+            if (functionNode.data.evidence && functionNode.data.evidence.length > 0) {
+                referencesHTML = functionNode.data.evidence.map(ev => {
+                    const paperTitle = ev.paper_title || 'Title not available';
+                    const authors = ev.authors || '';
+                    const journal = ev.journal || '';
+                    const year = ev.year || '';
+                    const pmid = ev.pmid || '';
+                    const doi = ev.doi || '';
+                    const quote = ev.relevant_quote || '';
+                    
+                    return `
+                        <div class="evidence-item">
+                            <div><strong>${paperTitle}</strong></div>
+                            ${authors ? `<div style="color: #6b7280; font-size: 12px;">${authors}</div>` : ''}
+                            <div style="color: #6b7280; font-size: 12px;">
+                                ${journal ? `${journal}` : ''}
+                                ${year ? ` (${year})` : ''}
+                            </div>
+                            <div style="margin-top: 4px;">
+                                ${pmid ? `<a href="https://pubmed.ncbi.nlm.nih.gov/${pmid}" target="_blank" class="pmid-link">PMID: ${pmid}</a>` : ''}
+                                ${doi ? ` | <span style="color: #6b7280;">DOI: ${doi}</span>` : ''}
+                            </div>
+                            ${quote ? `<div style="margin-top: 6px; font-style: italic; color: #4b5563; font-size: 12px;">"${quote}"</div>` : ''}
+                        </div>
+                    `;
+                }).join('');
+            } else if (functionNode.data.pmids && functionNode.data.pmids.length > 0) {
+                // Fallback to simple PMID links if no evidence array
+                referencesHTML = functionNode.data.pmids.map(pmid => 
+                    `<a href="https://pubmed.ncbi.nlm.nih.gov/${pmid}" target="_blank" class="pmid-link">PMID: ${pmid}</a>`
+                ).join(', ');
+            }
+            
+            modalBody.innerHTML = `
+                <table class="info-table">
+                    <tr class="info-row">
+                        <td class="info-label">FUNCTION</td>
+                        <td class="info-value"><strong style="font-size: 16px;">${functionNode.label}</strong></td>
+                    </tr>
+                    <tr class="info-row">
+                        <td class="info-label">AFFECTED PROTEIN</td>
+                        <td class="info-value"><strong>${functionNode.affectedProtein}</strong></td>
+                    </tr>
+                    <tr class="info-row">
+                        <td class="info-label">CELLULAR PROCESS</td>
+                        <td class="info-value">
+                            <div class="cellular-theme">
+                                <div class="cellular-theme-title">Molecular Mechanism</div>
+                                ${functionNode.data.cellular_process || 'Molecular mechanism not specified'}
+                            </div>
+                        </td>
+                    </tr>
+                    <tr class="info-row">
+                        <td class="info-label">BIOLOGICAL CASCADE</td>
+                        <td class="info-value">
+                            <div class="biological-cascade">
+                                ${biologicalConsequence}
+                            </div>
+                        </td>
+                    </tr>
+                    ${specificEffectsHTML}
+                    <tr class="info-row">
+                        <td class="info-label">EFFECT TYPE</td>
+                        <td class="info-value">
+                            ${functionNode.data.arrow === 'activates' ? 
+                              '<strong style="color: #059669;">✓ Enhanced/Activated</strong>' : 
+                              '<strong style="color: #dc2626;">✗ Inhibited/Disrupted</strong>'}
+                        </td>
+                    </tr>
+                    <tr class="info-row">
+                        <td class="info-label">MECHANISM</td>
+                        <td class="info-value">${functionNode.interactorData.intent ? 
+                            functionNode.interactorData.intent.charAt(0).toUpperCase() + 
+                            functionNode.interactorData.intent.slice(1) : 'Not specified'}</td>
+                    </tr>
+                    <tr class="info-row">
+                        <td class="info-label">CONFIDENCE</td>
+                        <td class="info-value">
+                            <strong style="font-size: 16px;">${Math.round(confValue * 100)}%</strong>
+                            <div class="confidence-meter">
+                                <div class="confidence-fill ${confClass}" style="width: ${confValue * 100}%"></div>
+                            </div>
+                        </td>
+                    </tr>
+                    <tr class="info-row">
+                        <td class="info-label">REFERENCES</td>
+                        <td class="info-value">${referencesHTML}</td>
+                    </tr>
+                </table>
+            `;
+            
+            modal.classList.add('active');
+        }
+
+        function showModal(linkData) {
+            const modal = document.getElementById('modal');
+            const modalTitle = document.getElementById('modalTitle');
+            const modalBody = document.getElementById('modalBody');
+
+            if (linkData.type === 'interaction') {
+                const arrow = linkData.data.direction === 'primary_to_main' ? '→' : '←';
+                modalTitle.textContent = `${linkData.data.primary} ${arrow} ${data.main}`;
+                
+                const confValue = linkData.data.confidence || 0;
+                const confClass = confValue >= 0.7 ? 'high' : confValue >= 0.5 ? 'medium' : 'low';
+                
+                modalBody.innerHTML = `
+                    <table class="info-table">
+                        <tr class="info-row">
+                            <td class="info-label">MECHANISM</td>
+                            <td class="info-value">${linkData.data.intent ? linkData.data.intent.charAt(0).toUpperCase() + linkData.data.intent.slice(1) : ''}</td>
+                        </tr>
+                        <tr class="info-row">
+                            <td class="info-label">EFFECT</td>
+                            <td class="info-value">${linkData.arrow === 'activates' ? '✓ Activates' : linkData.arrow === 'inhibits' ? '✗ Inhibits' : '═ Binds'}</td>
+                        </tr>
+                        <tr class="info-row">
+                            <td class="info-label">SUMMARY</td>
+                            <td class="info-value">${linkData.data.support_summary || ''}</td>
+                        </tr>
+                        <tr class="info-row">
+                            <td class="info-label">CONFIDENCE</td>
+                            <td class="info-value">
+                                <strong style="font-size: 16px;">${Math.round(confValue * 100)}%</strong>
+                                <div class="confidence-meter">
+                                    <div class="confidence-fill ${confClass}" style="width: ${confValue * 100}%}</div>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr class="info-row">
+                            <td class="info-label">EVIDENCE</td>
+                            <td class="info-value">
+                                ${linkData.data.evidence ? linkData.data.evidence.map(e => `
+                                    <div class="evidence-item">
+                                        <div><strong>PMID:</strong> <a href="https://pubmed.ncbi.nlm.nih.gov/${e.pmid}" target="_blank" class="pmid-link">${e.pmid}</a></div>
+                                        <div><strong>Year:</strong> ${e.year || 'Unknown'}</div>
+                                        <div><strong>Species:</strong> ${e.species || 'Not specified'}</div>
+                                        <div><strong>Method:</strong> ${e.assay || 'Not specified'}</div>
+                                        <div><strong>Finding:</strong> ${e.notes || 'No details provided'}</div>
+                                    </div>
+                                `).join('') : 'No evidence data available'}
+                            </td>
+                        </tr>
+                    </table>
+                `;
+            }
+
+            modal.classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.remove('active');
+        }
+
+        function zoomIn() {
+            svg.transition().call(
+                d3.zoom().transform,
+                d3.zoomIdentity.scale(currentZoom * 1.3)
+            );
+        }
+
+        function zoomOut() {
+            svg.transition().call(
+                d3.zoom().transform,
+                d3.zoomIdentity.scale(currentZoom * 0.7)
+            );
+        }
+
+        function resetView() {
+            svg.transition().call(
+                d3.zoom().transform,
+                d3.zoomIdentity
+            );
+        }
+
+        function dragstarted(event, d) {
+            if (!event.active) simulation.alphaTarget(0.3).restart();
+            d.fx = d.x;
+            d.fy = d.y;
+        }
+
+        function dragged(event, d) {
+            d.fx = event.x;
+            d.fy = event.y;
+        }
+
+        function dragended(event, d) {
+            if (!event.active) simulation.alphaTarget(0);
+            if (d.type !== 'main') {
+                d.fx = null;
+                d.fy = null;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', initNetwork);
+
+        window.addEventListener('resize', () => {
+            width = document.getElementById('network').clientWidth;
+            height = document.getElementById('network').clientHeight;
+            svg.attr('width', width).attr('height', height);
+            simulation.force('center', d3.forceCenter(width / 2, height / 2));
+            simulation.alpha(0.3).restart();
+        });
+
+        document.getElementById('modal').addEventListener('click', (e) => {
+            if (e.target.id === 'modal') {
+                closeModal();
+            }
+        });
+    </script>
+</body>
+</html>
