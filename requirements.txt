@@ -1,5 +1,2 @@
-google-generativeai
+openai>=1.51.0
 python-dotenv
-pathlib
-google-genai
-openai
