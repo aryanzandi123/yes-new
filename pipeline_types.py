@@ -28,15 +28,15 @@ class StepConfig:
     reasoning_effort:
         Optional reasoning effort level (e.g., "medium", "high") passed to the
         Responses API when supported by the target model.
-    use_google_search:
-        Whether to enable the Google Search grounding tool for this step.
+    use_web_search:
+        Whether to enable the OpenAI web search tool for this step.
     thinking_budget:
         Optional maximum hidden reasoning tokens to request from the model.
     max_output_tokens:
         Upper bound on response tokens emitted by the model.
-    search_dynamic_mode:
-        When True, enables dynamic Google Search retrieval mode for aggressive research.
-    search_dynamic_threshold:
+    web_search_dynamic_mode:
+        When True, enables the enhanced "aggressive" web search profile.
+    web_search_dynamic_threshold:
         Optional stopping threshold for dynamic retrieval (lower values favor more searches).
     """
 
@@ -47,11 +47,11 @@ class StepConfig:
     deep_research: bool = False
     system_prompt: Optional[str] = None
     reasoning_effort: Optional[str] = "high"
-    use_google_search: bool = True
+    use_web_search: bool = True
     thinking_budget: Optional[int] = None
     max_output_tokens: Optional[int] = None
-    search_dynamic_mode: bool = False
-    search_dynamic_threshold: Optional[float] = None
+    web_search_dynamic_mode: bool = False
+    web_search_dynamic_threshold: Optional[float] = None
 
     def __post_init__(self) -> None:
         if not self.name:
